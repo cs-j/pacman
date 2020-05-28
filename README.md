@@ -1,6 +1,8 @@
 # pacman
 
+<p align="center">
 ![pacman ghost](http://www.clipartbest.com/cliparts/7ia/Rga/7iaRgaaiA.gif)
+</p>
 
 **pacman spins up a simple server to help manage packages and their dependencies.**
 
@@ -22,6 +24,16 @@ If the connection is successful, you'll see `Listening for tcp connections at lo
 ### Test
 
 You can run the included test suite with `go test`.
+
+### Docker
+
+A `Dockerfile` is included.
+
+To build a container image using Docker, first make sure you have this repository cloned locally and then run the following:
+
+```bash
+docker build -t pacman:latest . && docker run pacman
+```
 
 ## Usage
 
@@ -48,8 +60,6 @@ REMOVE|blinky|\n
 QUERY|blinky|\n
 ```
 
-## Rationale
-
-### why Go?
-
-Go's rich standard library and built-in support for concurrency allows for handling a high volume of messages, without leaving production code vulnerable to dependencies on external libraries.
+<p align="center">
+![pacman cherries](https://www.clipartkey.com/mpngs/m/50-501321_cherry-clipart-pac-man-character-pacman-cherry-png.png | width=125)
+</p>
