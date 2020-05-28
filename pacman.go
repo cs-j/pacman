@@ -15,9 +15,7 @@ var null struct{}
 type command string
 type result string
 
-type pkg struct {
-	name string
-}
+type pkg string
 
 type dependencies map[pkg]struct{}
 
@@ -139,7 +137,7 @@ func parseDeps(str string) []pkg {
 
 	//  construct a package for each dependency, appending the new package to the list of dependencies
 	for _, dep := range compacted {
-		deps = append(deps, pkg{dep})
+		deps = append(deps, pkg(dep))
 	}
 	return deps
 }
@@ -161,7 +159,7 @@ func parse(message string) (error, command, pkg, []pkg) {
 	}
 
 	if len(parsed[1]) > 0 {
-		candidate = pkg{(parsed[1])}
+		candidate = pkg(parsed[1])
 	} else {
 		return errors.New("Package name cannot be empty."), cmd, candidate, deps
 	}
