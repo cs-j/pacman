@@ -60,8 +60,8 @@ func TestMessages(t *testing.T) {
 
 func TestIndex(t *testing.T) {
 	db := make(database)
-	foo := pkg{name: "foo"}
-	bar := pkg{name: "bar"}
+	foo := pkg("foo")
+	bar := pkg("bar")
 
 	// Indexing a package with 1+ dependencies that haven't been indexed fails.
 	res := index(db, foo, []pkg{bar})
@@ -93,8 +93,8 @@ func TestIndex(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	foo := pkg{name: "foo"}
-	bar := pkg{name: "bar"}
+	foo := pkg("foo")
+	bar := pkg("bar")
 	db := database{}
 
 	// Removing a nonexistent package succeeds.
@@ -121,7 +121,7 @@ func TestRemove(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
-	foo := pkg{name: "foo"}
+	foo := pkg("foo")
 	db := database{}
 
 	// Querying for a nonexistent package fails.
@@ -148,9 +148,9 @@ func TestParse(t *testing.T) {
 	err, _, _, _ = parse("TWIDDLE|foo|\n")
 	expectError(t, err)
 
-	foo := pkg{name: "foo"}
-	bar := pkg{name: "bar"}
-	baz := pkg{name: "baz"}
+	foo := pkg("foo")
+	bar := pkg("bar")
+	baz := pkg("baz")
 
 	// Valid REMOVE message.
 	err, command, candidate, deps := parse("REMOVE|foo|\n")
@@ -193,7 +193,7 @@ func TestParse(t *testing.T) {
 	err, command, candidate, deps = parse("INDEX|\\|,,\n")
 	expect(t, err, nil)
 	expect(t, command, index_cmd)
-	expect(t, candidate, pkg{name: "\\"})
+	expect(t, candidate, pkg("\\"))
 	expect(t, len(deps), 0)
 
 	// Invalid INDEX message: missing package name.
