@@ -10,6 +10,10 @@ import (
 	"sync"
 )
 
+//	Empty struct takes no space in memory.
+//	Use this as the value in the dependencies map since there's no information
+//	to associate with each dependency, other than its presence in the map.
+//	This is a fake Set in Go.
 var null struct{}
 
 type command string
@@ -41,6 +45,7 @@ const (
 	error_res result = "ERROR\n"
 )
 
+//  Stand up TCP server and start handling connections.
 func main() {
 	listener, err := net.Listen(protocol, address)
 	if err != nil {
@@ -58,10 +63,14 @@ func main() {
 			log.Fatalln("Error while accepting connection: ", err.Error())
 		}
 
+		//	a goroutine is a function that is capable of running concurrently with other functions.
+		//	Normally when we invoke a function our program will execute all the statements in a function and then return to the next line following the invocation.
+		//	With a goroutine we return immediately to the next line and don't wait for the function to complete.
 		go handleConnection(conn, &db)
 	}
 }
 
+//  Handle any number of requests on a connection and clean up after it.
 func handleConnection(conn net.Conn, db *syncDatabase) {
 	defer conn.Close()
 
@@ -75,6 +84,7 @@ func handleConnection(conn net.Conn, db *syncDatabase) {
 	}
 }
 
+//  Read a message off the connection, parse it, perform core operation.
 func handleRequest(conn net.Conn, db *syncDatabase, reader *bufio.Reader) error {
 	message, err := reader.ReadString('\n')
 	if err != nil {
@@ -109,6 +119,10 @@ func handleRequest(conn net.Conn, db *syncDatabase, reader *bufio.Reader) error 
 	return nil
 }
 
+// Parse string as one of three possible commands.
+//
+// Errors:
+//   - If command is not one of the three expected values.
 func parseCommand(str string) (error, command) {
 	switch str {
 	case "INDEX":
@@ -123,6 +137,7 @@ func parseCommand(str string) (error, command) {
 	}
 }
 
+//	Take in a string and return a slice of pkgs.
 func parseDeps(str string) []pkg {
 	deps := []pkg{}
 
@@ -135,13 +150,14 @@ func parseDeps(str string) []pkg {
 		}
 	}
 
-	//  construct a package for each dependency, appending the new package to the list of dependencies
+	//  Construct a package for each dependency, appending the new package to the list of dependencies.
 	for _, dep := range compacted {
 		deps = append(deps, pkg(dep))
 	}
 	return deps
 }
 
+//	Divide message into its constituent data types.
 func parse(message string) (error, command, pkg, []pkg) {
 	var cmd command
 	var candidate pkg
@@ -169,11 +185,13 @@ func parse(message string) (error, command, pkg, []pkg) {
 	return nil, cmd, candidate, deps
 }
 
+//	Attempt to index a pkg and its deps to the db, return a response code.
 func index(db database, candidate pkg, deps []pkg) result {
 	new_deps := make(dependencies)
 
 	for _, dep := range deps {
 		_, exists := db[dep]
+		//	Return `FAIL\n` if the candidate cannot be indexed because some of its dependencies aren't indexed yet.
 		if !exists {
 			return fail_res
 		}
@@ -185,12 +203,16 @@ func index(db database, candidate pkg, deps []pkg) result {
 	return ok_res
 }
 
+//	Attempt to remove a pkg from the db, return a response code.
 func remove(db database, candidate pkg) result {
+
+	//	Return `OK\n` if the candidate wasn't indexed.
 	_, exists := db[candidate]
 	if !exists {
 		return ok_res
 	}
 
+	//	Return `FAIL\n` if the candidate could not be removed from the index because some other indexed package depends on it.
 	for _, deps := range db {
 		_, exists := deps[candidate]
 		if exists {
@@ -198,12 +220,16 @@ func remove(db database, candidate pkg) result {
 		}
 	}
 
+	//	Remove candidate from db.
 	delete(db, candidate)
 	return ok_res
 }
 
+//	Look up a pkg in the db, return a response code.
 func query(db database, candidate pkg) result {
 	_, exists := db[candidate]
+
+	//	Return `FAIL\n` if the candidate isn't indexed.
 	if !exists {
 		return fail_res
 	}
