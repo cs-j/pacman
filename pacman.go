@@ -36,13 +36,13 @@ const (
 	address  = "0.0.0.0:8080"
 	protocol = "tcp"
 
-	index_cmd  command = "INDEX"
-	query_cmd  command = "QUERY"
-	remove_cmd command = "REMOVE"
+	indexCmd  command = "INDEX"
+	queryCmd  command = "QUERY"
+	removeCmd command = "REMOVE"
 
-	ok_res    result = "OK\n"
-	fail_res  result = "FAIL\n"
-	error_res result = "ERROR\n"
+	okRes    result = "OK\n"
+	failRes  result = "FAIL\n"
+	errorRes result = "ERROR\n"
 )
 
 //  Stand up TCP server and start handling connections.
@@ -92,24 +92,24 @@ func handleRequest(conn net.Conn, db *syncDatabase, reader *bufio.Reader) error 
 		return err
 	}
 
-	err, command, pkg, deps := parse(message)
+	command, pkg, deps, err := parse(message)
 
 	var response result
-	response = error_res
+	response = errorRes
 
 	if err != nil {
 		conn.Write([]byte(response))
 	} else {
 		switch command {
-		case index_cmd:
+		case indexCmd:
 			db.Lock()
 			response = index(db.db, pkg, deps)
 			db.Unlock()
-		case remove_cmd:
+		case removeCmd:
 			db.Lock()
 			response = remove(db.db, pkg)
 			db.Unlock()
-		case query_cmd:
+		case queryCmd:
 			db.RLock()
 			response = query(db.db, pkg)
 			db.RUnlock()
@@ -123,17 +123,17 @@ func handleRequest(conn net.Conn, db *syncDatabase, reader *bufio.Reader) error 
 //
 // Errors:
 //   - If command is not one of the three expected values.
-func parseCommand(str string) (error, command) {
+func parseCommand(str string) (command, error) {
 	switch str {
 	case "INDEX":
-		return nil, index_cmd
+		return indexCmd, nil
 	case "REMOVE":
-		return nil, remove_cmd
+		return removeCmd, nil
 	case "QUERY":
-		return nil, query_cmd
+		return queryCmd, nil
 	default:
 		var cmd command
-		return errors.New(fmt.Sprintf("Invalid command: %v", str)), cmd
+		return cmd, fmt.Errorf("Invalid command: %v", str)
 	}
 }
 
@@ -158,7 +158,7 @@ func parseDeps(str string) []pkg {
 }
 
 //	Divide message into its constituent data types.
-func parse(message string) (error, command, pkg, []pkg) {
+func parse(message string) (command, pkg, []pkg, error) {
 	var cmd command
 	var candidate pkg
 	var deps []pkg
@@ -166,41 +166,44 @@ func parse(message string) (error, command, pkg, []pkg) {
 	parsed := strings.Split(strings.TrimSpace(message), "|")
 
 	if len(parsed) != 3 {
-		return errors.New("Invalid message format."), cmd, candidate, deps
+		return cmd, candidate, deps, errors.New("invalid message format")
 	}
 
-	err, cmd := parseCommand(parsed[0])
+	cmd, err := parseCommand(parsed[0])
 	if err != nil {
-		return err, cmd, candidate, deps
+		return cmd, candidate, deps, err
 	}
 
 	if len(parsed[1]) > 0 {
 		candidate = pkg(parsed[1])
 	} else {
-		return errors.New("Package name cannot be empty."), cmd, candidate, deps
+		return cmd, candidate, deps, errors.New("package name cannot be empty")
 	}
 
 	deps = parseDeps(parsed[2])
 
-	return nil, cmd, candidate, deps
+	return cmd, candidate, deps, nil
 }
 
 //	Attempt to index a pkg and its deps to the db, return a response code.
 func index(db database, candidate pkg, deps []pkg) result {
-	new_deps := make(dependencies)
+	newDeps := make(dependencies)
 
 	for _, dep := range deps {
 		_, exists := db[dep]
 		//	Return `FAIL\n` if the candidate cannot be indexed because some of its dependencies aren't indexed yet.
 		if !exists {
-			return fail_res
+			return failRes
 		}
-		new_deps[dep] = null
+		//	Move deps that do already exist in db from slice of pkgs into newDeps map.
+		newDeps[dep] = null
 	}
 
-	// if all of candidate's dependencies are indexed, index candidate
-	db[candidate] = new_deps
-	return ok_res
+	//	Index candidate and its newDeps into db.
+	//	If a candidate already existed in db, update its list of dependencies to the one provided with the latest command.
+	db[candidate] = newDeps
+	//	Return `OK\n` if the candidate could be indexed.
+	return okRes
 }
 
 //	Attempt to remove a pkg from the db, return a response code.
@@ -209,20 +212,21 @@ func remove(db database, candidate pkg) result {
 	//	Return `OK\n` if the candidate wasn't indexed.
 	_, exists := db[candidate]
 	if !exists {
-		return ok_res
+		return okRes
 	}
 
 	//	Return `FAIL\n` if the candidate could not be removed from the index because some other indexed package depends on it.
 	for _, deps := range db {
 		_, exists := deps[candidate]
 		if exists {
-			return fail_res
+			return failRes
 		}
 	}
 
 	//	Remove candidate from db.
 	delete(db, candidate)
-	return ok_res
+	//	Return `OK\n` if the candidate could be removed.
+	return okRes
 }
 
 //	Look up a pkg in the db, return a response code.
@@ -231,7 +235,9 @@ func query(db database, candidate pkg) result {
 
 	//	Return `FAIL\n` if the candidate isn't indexed.
 	if !exists {
-		return fail_res
+		return failRes
 	}
-	return ok_res
+
+	//	Return `OK\n` if the candidate exists in the db.
+	return okRes
 }
