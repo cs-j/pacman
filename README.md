@@ -29,10 +29,10 @@ You can run the Go test suite with `go test`.
 
 A `Dockerfile` is included.
 
-To run pacman inside of a Docker container and execute the provided test suite against it, run the following:
+To run pacman inside of a Docker container, run the following:
 
 ```bash
-docker build -t pacman . && docker run -p 8080:8080 --init -d pacman && ./do-package-tree_<platform>
+docker build -t pacman . && docker run -p 8080:8080 --init -d pacman
 ```
 
 ## Usage
@@ -62,12 +62,3 @@ QUERY|blinky|\n
 <p align="center">
   <img src="https://ya-webdesign.com/transparent250_/pacman-cherry-png-6.png" alt="pacman cherries"> 
 </p>
-
-TODO
-
-- The way we're doing locks might not be the most performant. If we need performance to be better, consider passing syncDB into index, query, remove funcs and only hold the lock for the exact instance we need it and release it immediately afterwards
-
-- We don’t want a package name that’s empty strings, emojis, weird characters, other white space characters, new line characters.
-  Need more complex validation logic if this were real
-
-- add error types e.g. InvalidCommand
