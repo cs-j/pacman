@@ -62,3 +62,12 @@ QUERY|blinky|\n
 <p align="center">
   <img src="https://ya-webdesign.com/transparent250_/pacman-cherry-png-6.png" alt="pacman cherries"> 
 </p>
+
+TODO
+
+- The way we're doing locks might not be the most performant. If we need performance to be better, consider passing syncDB into index, query, remove funcs and only hold the lock for the exact instance we need it and release it immediately afterwards
+
+- We don’t want a package name that’s empty strings, emojis, weird characters, other white space characters, new line characters.
+  Need more complex validation logic if this were real
+
+- add error types e.g. InvalidCommand
